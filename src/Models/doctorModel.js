@@ -28,10 +28,14 @@ const doctorSchema = new mongoose.Schema(
         message: "is not valid password",
       },
     },
-    // image: {
-    //   type: String,
-    //   required: true,
-    // },
+    image: {
+      type: String,
+      required: true,
+    },
+    experience: {
+      type: String,
+      required: true,
+    },
     speciality: {
       type: String,
       required: true,
@@ -42,6 +46,11 @@ const doctorSchema = new mongoose.Schema(
     },
     avaliable: {
       type: Boolean,
+      default: true,
+      required: true,
+    },
+    degree: {
+      type: String,
       required: true,
     },
     fees: {
@@ -52,14 +61,10 @@ const doctorSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    date: {
-      type: Date,
-      required: true,
-    },
     slots_booked: {
       type: Object,
       default: {},
-      required:true
+      required: true,
     },
   },
   { minimize: true }

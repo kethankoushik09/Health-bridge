@@ -9,12 +9,10 @@ async function addDoctor(req, res) {
       name,
       email,
       password,
-      // image,
+      degree,
+      experience,
       speciality,
-      avaliable,
       fees,
-      date,
-      slots_booked,
       address,
       about,
     } = req.body;
@@ -24,47 +22,45 @@ async function addDoctor(req, res) {
         name,
         email,
         password,
-        // image,
+        experience,
         speciality,
-        avaliable,
+        degree,
         fees,
-        date,
-        slots_booked,
         address,
         about,
       ].some((v) => v == null || v === "")
     ) {
-      return res.status(400).json({ error: "All fields must be filled" });
+      return res.status(400).json({ message: "All fields must be filled" });
     }
-    // const imageFile = req.file;
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    console.log(req.file.imageFile);
 
-    // const imageupload = await cloudinary.uploader.upload(req.file.path, {
-    //   folder: "images",
-    //   resource_type: "auto",
-    // });
-    // const imageUrl = imageupload.secure_url;
+    const imageupload = await cloudinary.uploader.upload(req.file.path, {
+      folder: "images",
+      resource_type: "auto",
+    });
+    const imageUrl = imageupload.secure_url;
 
     const doctordata = {
       name,
       email,
       password: hashedPassword,
-      // image: imageUrl,
-      avaliable,
+      image: imageUrl,
+      experience,
       speciality,
       fees,
-      date,
-      slots_booked,
+      degree,
       address,
       about,
     };
 
     const newDoctor = new Doctor(doctordata);
     await newDoctor.save();
-    res.status(201).json({ sucess: true, msg: "doctor added" });
+    res.status(201).json({ success: true, message: "data added" });
   } catch (err) {
-    res.status(400).json({ sucess: false, error: err.message });
+    res.status(400).json({ success: false, message: err.message });
   }
 }
 
@@ -77,7 +73,6 @@ async function adminLogin(req, res) {
       password == process.env.ADMIN_PASSWORD
     ) {
       const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY);
-      console.log(token);
 
       res.cookie("admintoken", token, {
         httpOnly: true,
@@ -99,9 +94,9 @@ async function adminLogout(req, res) {
   try {
     res.cookie("admintoken", null, {
       httpOnly: true,
-      expires: new Date(0), 
+      expires: new Date(0),
       sameSite: "strict",
-      secure: process.env.NODE_ENV === "production", 
+      secure: process.env.NODE_ENV === "production",
     });
 
     res.status(200).json({ success: true, message: "Logout successful" });
@@ -109,4 +104,14 @@ async function adminLogout(req, res) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
-module.exports = { addDoctor, adminLogin ,adminLogout};
+
+async function AllDoctors(req, res) {
+  try {
+    const doctors = await Doctor.find({}).select("-password");
+    return res.json({ success: true, doctors });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+
+module.exports = { addDoctor, adminLogin, adminLogout, AllDoctors };

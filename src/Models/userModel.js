@@ -33,15 +33,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       validate: {
         validator: function (val) {
-          return validator.isUrl(val);
+          return validator.isURL(val);
         },
         message: "is not valid URL",
       },
 
     },
     address:{
-        type:Object,
-        default:{line1:"",line2:""}
+        type:String,
     },
     gender: {
       type: String,

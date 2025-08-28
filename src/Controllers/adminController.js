@@ -73,6 +73,8 @@ async function adminLogin(req, res) {
       password == process.env.ADMIN_PASSWORD
     ) {
       const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY);
+      console.log(token);
+      
 
       res.cookie("admintoken", token, {
         httpOnly: true,

@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../Models/userModel");
 
-const authAdmin = async (req,res,next) => {
+const authUser = async (req,res,next) => {
   try {
 
     const { usertoken } = req.cookies;
@@ -24,4 +24,4 @@ const authAdmin = async (req,res,next) => {
   }
 };
 
-module.exports = authAdmin;
+module.exports = authUser;

@@ -4,7 +4,9 @@ const {
   loginUser,
   getUserProfile,   
   Userlogout,
-  UpdateProfile
+  UpdateProfile,
+  bookAppointment,
+  getAppointments
 } = require("../Controllers/userController");
 const upload = require("../Middleware/multer");
 const authUser = require("../Middleware/userAuth");
@@ -20,5 +22,8 @@ userRouter.get("/getProfile", authUser, getUserProfile);
 userRouter.post("/logout", authUser, Userlogout);
 
 userRouter.patch("/editProfile",authUser,upload.single("image"),UpdateProfile);
+
+userRouter.post("/bookAppointment", authUser,bookAppointment);
+userRouter.get("/getAppointments", authUser, getAppointments);
 
 module.exports = userRouter;

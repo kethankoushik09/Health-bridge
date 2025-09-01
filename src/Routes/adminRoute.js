@@ -1,5 +1,5 @@
 const express = require("express");
-const {addDoctor,adminLogin,adminLogout,AllDoctors} = require("../Controllers/adminController");
+const {addDoctor,adminLogin,adminLogout,AllDoctors,getAllAppointments,getLatestBookings,getDashboardStats} = require("../Controllers/adminController");
 const upload = require("../Middleware/multer");
 const authAdmin = require("../Middleware/adminAuth");
 
@@ -11,7 +11,10 @@ adminRouter.post("/logIn",adminLogin);
 
 adminRouter.post ("/logOut",authAdmin,adminLogout);
 
-adminRouter.get("/allDoctors",authAdmin,AllDoctors);
+adminRouter.get("/allDoctors",AllDoctors);
 
+adminRouter.get("/appointments",authAdmin,getAllAppointments);
+adminRouter.get("/latestBookings",authAdmin,getLatestBookings);
+adminRouter.get("/dashboardStats",getDashboardStats);
 
 module.exports = adminRouter;

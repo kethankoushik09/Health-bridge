@@ -44,7 +44,7 @@ const doctorSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    avaliable: {
+    available: {
       type: Boolean,
       default: true,
       required: true,

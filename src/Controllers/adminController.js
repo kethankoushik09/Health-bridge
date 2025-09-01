@@ -2,6 +2,8 @@ const Doctor = require("../Models/doctorModel");
 const cloudinary = require("cloudinary").v2;
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const Appointment = require("../Models/appoinmentModel");
+const User = require("../Models/userModel");
 
 async function addDoctor(req, res) {
   try {
@@ -74,7 +76,6 @@ async function adminLogin(req, res) {
     ) {
       const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY);
       console.log(token);
-      
 
       res.cookie("admintoken", token, {
         httpOnly: true,
@@ -116,4 +117,60 @@ async function AllDoctors(req, res) {
   }
 }
 
-module.exports = { addDoctor, adminLogin, adminLogout, AllDoctors };
+async function getAllAppointments(req, res) {
+  try {
+    const appointments = await Appointment.find({});
+    return res.json({ success: true, appointments });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+
+async function getLatestBookings(req, res) {
+  try {
+    const latest = await Appointment.find({})
+      .sort({ date: -1 }) // newest first
+      .limit(4); // only latest 4
+    res.json({ success: true, latest });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+
+async function getDashboardStats(req, res) {
+  try {
+    const totalDoctors = await Doctor.countDocuments();
+    const totalPatients = await User.countDocuments();
+    const totalAppointments = await Appointment.countDocuments();
+
+    // Calculate earnings = sum of all appointment amounts
+    const earningsAgg = await Appointment.aggregate([
+      { $match: { payment: true } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const totalEarnings = earningsAgg.length > 0 ? earningsAgg[0].total : 0;
+
+    res.json({
+      success: true,
+      stats: {
+        earnings: totalEarnings,
+        appointments: totalAppointments,
+        patients: totalPatients,
+        doctors: totalDoctors,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+module.exports = {
+  addDoctor,
+  adminLogin,
+  adminLogout,
+  AllDoctors,
+  getAllAppointments,
+  getLatestBookings,
+  getDashboardStats,
+};

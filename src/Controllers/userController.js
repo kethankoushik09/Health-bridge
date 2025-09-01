@@ -2,6 +2,8 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const User = require("../Models/userModel");
+const Doctor = require("../Models/doctorModel");
+const Appointment = require("../Models/appoinmentModel");
 const cloudinary = require("cloudinary").v2;
 
 async function registerUser(req, res) {
@@ -77,7 +79,6 @@ async function UpdateProfile(req, res) {
       delete data.dob;
     }
     console.log(req.body);
-    
 
     // Update basic fields
     let newdata = await User.findByIdAndUpdate(userId, data, { new: true });
@@ -102,7 +103,6 @@ async function UpdateProfile(req, res) {
       });
     }
     console.log("111");
-    
 
     // Only runs if no file uploaded
     return res.status(201).json({
@@ -125,10 +125,115 @@ async function Userlogout(req, res) {
   }
 }
 
+async function bookAppointment(req, res) {
+  try {
+    const userId = req.user._id;
+    const { docId, slotDate, slotTime, payment } = req.body;
+
+    const docData = await Doctor.findById(docId).select("-password");
+    if (!docData) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Doctor not found" });
+    }
+    console.log(docData);
+
+    if (!docData.available) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Doctor not available" });
+    }
+
+    // prevent double-booking for the user at same date and time
+    const existingAppointment = await Appointment.findOne({
+      userId,
+      slotDate,
+      slotTime,
+      cancelled: false,
+    });
+    if (existingAppointment) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You already have an appointment at this time. Please choose another slot.",
+      });
+    }
+
+    let slots_booked = docData.slots_booked;
+
+    // checking for slot availability
+    if (slots_booked[slotDate]) {
+      if (slots_booked[slotDate].includes(slotTime)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Doctor not available at this slot" });
+      } else {
+        slots_booked[slotDate].push(slotTime);
+      }
+    } else {
+      slots_booked[slotDate] = [];
+      slots_booked[slotDate].push(slotTime);
+    }
+
+    const userData = await User.findById(userId).select("-password");
+
+    delete docData.slots_booked;
+
+    const appointmentData = {
+      userId,
+      docId,
+      slotDate,
+      slotTime,
+      userData,
+      docData,
+      amount: docData.fees,
+      date: new Date(),
+      payment,
+    };
+
+    const newAppointment = new Appointment(appointmentData);
+    await newAppointment.save();
+
+    // save new slots data in docData
+    await Doctor.findByIdAndUpdate(docId, { slots_booked: slots_booked });
+
+    res.json({
+      success: true,
+      message: "Appointment booked",
+      appointment: newAppointment,
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+}
+
+async function getAppointments(req, res) {
+  try {
+    const userId = req.user._id;
+
+    // Fetch all appointments for the logged-in user, sort by date descending
+    const appointments = await Appointment.find({ userId })
+      .sort({ date: -1 })
+      .lean(); // lean() gives plain JS objects
+    console.log("appointments", appointments);
+
+    res.status(200).json({
+      success: true,
+      appointments,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+}
+
 module.exports = {
   registerUser,
   loginUser,
   getUserProfile,
   Userlogout,
   UpdateProfile,
+  bookAppointment,
+  getAppointments,
 };

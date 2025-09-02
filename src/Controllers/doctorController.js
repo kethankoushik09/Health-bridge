@@ -1,15 +1,119 @@
 const Doctor = require("../Models/doctorModel");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const Appointment = require("../Models/appoinmentModel");
+const User = require("../Models/userModel");
+const e = require("express");
 
 async function changeAvailability(req, res) {
   const { doctorId } = req.params;
   try {
     const doctor = await Doctor.findById(doctorId);
     await Doctor.findByIdAndUpdate(doctorId, { available: !doctor.available });
-    res.status(200).json({ message: true, message: "changed Availability" });
+    res.status(200).json({ success: true, message: "changed Availability" });
   } catch (err) {
-    res.status(400).json({ message: false, message: err.message });
+    res.status(400).json({ success: false, message: err.message });
   }
 }
 
-module.exports = {changeAvailability};
-                                     
+async function docLogin(req, res) {
+  try {
+    const { email, password } = req.body;
+    const doctor = await Doctor.findOne({ email });
+    if (!doctor) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Doctor not found" });
+    }
+    const isMatch = await bcrypt.compare(password, doctor.password);
+
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { id: doctor._id, role: "doctor" },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: "1d" }
+    );
+
+    res.cookie("doctortoken", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.status(200).json({ success: true, message: "Login successful", token });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+async function getDocDashboardStats(req, res) {
+  try {
+    const doctorId = req.doctor.id;
+    console.log(doctorId);
+
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Doctor not found" });
+    }
+
+    // Total appointments for this doctor
+    const totalAppointments = await Appointment.countDocuments({
+      docId: doctorId,
+    });
+    console.log(totalAppointments);
+
+    // Unique patients for this doctor
+    const patientsAgg = await Appointment.aggregate([
+      { $match: { docId: new mongoose.Types.ObjectId(doctorId) } },
+      { $group: { _id: "$userId" } },
+    ]);
+    const totalPatients = patientsAgg.length;
+
+    // Earnings for this doctor
+    const earningsAgg = await Appointment.aggregate([
+      {
+        $match: { docId: new mongoose.Types.ObjectId(doctorId), payment: true },
+      },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const totalEarnings = earningsAgg.length > 0 ? earningsAgg[0].total : 0;
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        earnings: totalEarnings,
+        appointments: totalAppointments,
+        patients: totalPatients,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+
+async function docLogout(req, res) {
+  try {
+    res.cookie("doctortoken", null, {
+      httpOnly: true,
+      expires: new Date(0),
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.status(200).json({ success: true, message: "Logout successful" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+module.exports = {
+  changeAvailability,
+  docLogin,
+  getDocDashboardStats,
+  docLogout,
+};

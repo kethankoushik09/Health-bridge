@@ -1,10 +1,12 @@
 const express = require("express");
-const authAdmin = require("../Middleware/adminAuth");
-const {changeAvailability} = require("../Controllers/doctorController");
+const {changeAvailability,docLogin,getDocDashboardStats,docLogout} = require("../Controllers/doctorController");
+const authDoc = require("../Middleware/docAuth");
 
 const doctorRouter = express.Router();
 
-doctorRouter.patch("/changeAvailablity/:doctorId",authAdmin,changeAvailability);
-
+doctorRouter.patch("/changeAvailability/:doctorId",authDoc,changeAvailability);
+doctorRouter.post("/login", docLogin);
+doctorRouter.get("/dashboardStats", authDoc, getDocDashboardStats);
+doctorRouter.post("/logout", authDoc, docLogout);
 
 module.exports = doctorRouter;

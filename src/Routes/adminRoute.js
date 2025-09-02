@@ -13,8 +13,8 @@ adminRouter.post ("/logOut",authAdmin,adminLogout);
 
 adminRouter.get("/allDoctors",AllDoctors);
 
-adminRouter.get("/appointments",authAdmin,getAllAppointments);
-adminRouter.get("/latestBookings",authAdmin,getLatestBookings);
+adminRouter.get("/appointments",getAllAppointments);
+adminRouter.get("/latestBookings",getLatestBookings);
 adminRouter.get("/dashboardStats",getDashboardStats);
 
 module.exports = adminRouter;

@@ -3,7 +3,9 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const Appointment = require("../Models/appoinmentModel");
 const User = require("../Models/userModel");
-const e = require("express");
+const { default: mongoose } = require("mongoose");
+const fs = require("fs");
+const cloudinary = require("cloudinary").v2;
 
 async function changeAvailability(req, res) {
   const { doctorId } = req.params;
@@ -52,7 +54,7 @@ async function docLogin(req, res) {
 async function getDocDashboardStats(req, res) {
   try {
     const doctorId = req.doctor.id;
-    console.log(doctorId);
+    // console.log(doctorId);
 
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) {
@@ -65,7 +67,7 @@ async function getDocDashboardStats(req, res) {
     const totalAppointments = await Appointment.countDocuments({
       docId: doctorId,
     });
-    console.log(totalAppointments);
+    // console.log(totalAppointments);
 
     // Unique patients for this doctor
     const patientsAgg = await Appointment.aggregate([
@@ -111,9 +113,86 @@ async function docLogout(req, res) {
   }
 }
 
+async function getLatestBookingsOfDoc(req, res) {
+  try {
+    const doctorId = req.doctor.id;
+
+    const latest = await Appointment.find({ docId: doctorId })
+      .sort({ date: -1 }) // newest first
+      .limit(4); // only latest 4
+
+    res.status(200).json({ success: true, latest });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+async function getAllDocAppointments(req, res) {
+  try {
+    const doctorId = req.doctor.id;
+
+    const appointments = await Appointment.find({ docId: doctorId }).sort({
+      date: -1,
+    });
+    res.status(200).json({ success: true, appointments });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+async function getDocProfile(req, res) {
+  try {
+    const doctorId = req.doctor.id;
+
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Doctor not found" });
+    }
+
+    res.status(200).json({ success: true, profile: doctor });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+async function updateDocProfile(req, res) {
+  try {
+    const doctorId = req.doctor.id;
+    let updateData = { ...req.body };
+
+    // if new image uploaded
+    if (req.file) {
+      const upload = await cloudinary.uploader.upload(req.file.path, {
+        folder: "doctor_profiles",
+      });
+      updateData.image = upload.secure_url;
+
+      // remove local temp file
+      fs.unlinkSync(req.file.path);
+    }
+
+    const updatedDoctor = await Doctor.findByIdAndUpdate(
+      doctorId,
+      { $set: updateData },
+      { new: true }
+    );
+
+    res.status(200).json({ success: true, doctor: updatedDoctor });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+
 module.exports = {
   changeAvailability,
   docLogin,
   getDocDashboardStats,
   docLogout,
+  getLatestBookingsOfDoc,
+  getAllDocAppointments,
+  getDocProfile,
+  updateDocProfile
 };

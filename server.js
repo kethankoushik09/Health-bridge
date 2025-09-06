@@ -21,7 +21,11 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-  origin:"http://localhost:5173",
+  origin: [
+      "http://localhost:5173",
+      "https://wellness-rust-gamma.vercel.app",
+      "https://wellness-admin-alpha.vercel.app"
+    ],  
   credentials:true
 }))
 

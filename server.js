@@ -12,9 +12,9 @@ dotenv.config();
 
 const app = express();
 
-// app.get("/", (req, res) => {
-//   res.send("kethan");
-// });
+app.get("/", (req, res) => {
+  res.send("KS Wellness ");
+});
 
 app.use(express.json());
 app.use(cookieParser());

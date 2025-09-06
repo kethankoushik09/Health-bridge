@@ -128,7 +128,9 @@ async function Userlogout(req, res) {
 async function bookAppointment(req, res) {
   try {
     const userId = req.user._id;
-    const { docId, slotDate, slotTime, payment } = req.body;
+    let { docId, slotDate, slotTime, payment } = req.body;
+
+    slotDate = new Date(slotDate).toISOString().split("T")[0];
 
     const docData = await Doctor.findById(docId).select("-password");
     if (!docData) {
@@ -159,14 +161,17 @@ async function bookAppointment(req, res) {
       });
     }
 
-    let slots_booked = docData.slots_booked;
+    let slots_booked = docData.slots_booked || {};
 
     // checking for slot availability
     if (slots_booked[slotDate]) {
       if (slots_booked[slotDate].includes(slotTime)) {
         return res
           .status(400)
-          .json({ success: false, message: "Doctor not available at this slot" });
+          .json({
+            success: false,
+            message: "Doctor not available at this slot",
+          });
       } else {
         slots_booked[slotDate].push(slotTime);
       }
@@ -228,6 +233,64 @@ async function getAppointments(req, res) {
   }
 }
 
+async function cancelAppointment(req, res) {
+  try {
+    const userId = req.user._id;
+    const { appointmentId } = req.body;
+
+    const appointment = await Appointment.findOne({
+      _id: appointmentId,
+      userId,
+    });
+
+    if (!appointment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Appointment not found" });
+    }
+
+    if (appointment.cancelled) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Appointment already cancelled" });
+    }
+
+    // Mark appointment as cancelled
+    appointment.cancelled = true;
+    await appointment.save();
+
+    // Free up the slot for the doctor
+    const doctor = await Doctor.findById(appointment.docId).lean(); // use lean so we get a plain JS object
+    if (doctor && doctor.slots_booked) {
+      let slots_booked = { ...doctor.slots_booked }; // clone into plain object
+
+      const { slotDate, slotTime } = appointment;
+
+      if (slots_booked[slotDate]) {
+        slots_booked[slotDate] = slots_booked[slotDate].filter(
+          (time) => time !== slotTime
+        );
+
+        if (slots_booked[slotDate].length === 0) {
+          delete slots_booked[slotDate];
+        }
+      }
+
+      // now update doctor’s record
+      await Doctor.findByIdAndUpdate(doctor._id, { slots_booked });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Appointment cancelled successfully",
+      appointment,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+}
+
 module.exports = {
   registerUser,
   loginUser,
@@ -236,4 +299,5 @@ module.exports = {
   UpdateProfile,
   bookAppointment,
   getAppointments,
+  cancelAppointment,
 };

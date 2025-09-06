@@ -7,7 +7,7 @@ const {
   getLatestBookingsOfDoc,
   getAllDocAppointments,
   getDocProfile
-    ,updateDocProfile
+    ,updateDocProfile,cancelAppointment
 } = require("../Controllers/doctorController");
 const authDoc = require("../Middleware/docAuth");
 const authAdmin = require("../Middleware/adminAuth");
@@ -27,5 +27,6 @@ doctorRouter.get("/latestBookings", authDoc, getLatestBookingsOfDoc);
 doctorRouter.get("/appointments", authDoc, getAllDocAppointments);
 doctorRouter.get("/profile", authDoc, getDocProfile);
 doctorRouter.put("/profile", authDoc, upload.single("image"), updateDocProfile);
+doctorRouter.post("/cancelAppointment", authDoc, cancelAppointment);
 
 module.exports = doctorRouter;

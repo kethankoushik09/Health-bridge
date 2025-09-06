@@ -185,6 +185,65 @@ async function updateDocProfile(req, res) {
   }
 }
 
+async function cancelAppointment(req, res) {
+  try {
+    const { appointmentId } = req.body;
+    const doctorId = req.doctor.id;
+
+    // check if appointment exists and belongs to doc
+    const appointment = await Appointment.findOne({
+      _id: appointmentId,
+      docId: doctorId,
+    });
+    if (!appointment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Appointment not found" });
+    }
+
+    if (appointment.cancelled) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Appointment already cancelled" });
+    }
+
+    appointment.cancelled = true;
+    await appointment.save();
+
+    // free up the slot of doctor
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Doctor not found" });
+    }
+
+    if (doctor && doctor.slots_booked) {
+      let slots_booked = { ...doctor.slots_booked }; // clone into plain object
+
+      const { slotDate, slotTime } = appointment;
+
+      if (slots_booked[slotDate]) {
+        slots_booked[slotDate] = slots_booked[slotDate].filter(
+          (time) => time !== slotTime
+        );
+
+        if (slots_booked[slotDate].length === 0) {
+          delete slots_booked[slotDate];
+        }
+      }
+
+      // now update doctor’s record
+      await Doctor.findByIdAndUpdate(doctor._id, { slots_booked });
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "Appointment cancelled successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
 
 module.exports = {
   changeAvailability,
@@ -194,5 +253,6 @@ module.exports = {
   getLatestBookingsOfDoc,
   getAllDocAppointments,
   getDocProfile,
-  updateDocProfile
+  updateDocProfile,
+  cancelAppointment,
 };

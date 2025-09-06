@@ -10,7 +10,7 @@ const appointmentSchema=new mongoose.Schema({
         ref:"Doctors"
     },
     slotDate:{
-        type:Date,
+        type:String,
         required:true
     },
     slotTime:{
